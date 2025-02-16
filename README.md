@@ -68,21 +68,27 @@ The required torque for **Motor 3** is **0.3924 Nm**.
 After calculating the required torque, we will search for servo motors that meet these values.
 - **motor 1 :** 
 Required Torque: 1.47 Nm
+
 MG996R or MG995:
+
 Torque: 9.4 kg·cm (0.94 Nm) at 4.8V, and it can increase with higher voltage.
 
 
 - **motor 2 :**
 Required Torque: 0.981 Nm
+
 TowerPro MG995:
+
 Torque: 9 kg·cm (0.9 Nm) at 4.8V.
 
 - **motor 3 :**
 Required Torque: 0.3924 Nm
+
 HS-82MG:
+
 Torque: 3.5 kg·cm (0.35 Nm) at 4.8V.
 
 
-##Conclusion:
+## Conclusion:
 We have calculated the required torque for each joint in the robotic arm (1.47 Nm, 0.981 Nm, 0.3924 Nm) and selected appropriate servo motors for each joint based on the required torque.
 
