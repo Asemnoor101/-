@@ -83,6 +83,6 @@ HS-82MG:
 Torque: 3.5 kg·cm (0.35 Nm) at 4.8V.
 
 
-**Conclusion:**
+##Conclusion:
 We have calculated the required torque for each joint in the robotic arm (1.47 Nm, 0.981 Nm, 0.3924 Nm) and selected appropriate servo motors for each joint based on the required torque.
 
