@@ -2,7 +2,7 @@ file | after silence trim + cuts (s)
 abbad-evening | 1151
 abbad-morning | 1231
 abkar-both | 643
-afasy-evening | 1131
+afasy-evening | 1109
 afasy-morning | 1078
 jibril-evening | 1323
 jibril-morning | 1264
