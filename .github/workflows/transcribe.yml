@@ -1,0 +1,51 @@
+name: Transcribe adhkar audio
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/transcribe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [afasy-morning, afasy-evening, abbad-morning, abbad-evening, jibril-morning, jibril-evening, labban-morning, labban-evening, abkar-both, rifai-both]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q faster-whisper==1.0.3
+      - name: Transcribe
+        run: |
+          python - <<'PY'
+          from faster_whisper import WhisperModel
+          name = "${{ matrix.name }}"
+          m = WhisperModel("small", device="cpu", compute_type="int8")
+          segs, _ = m.transcribe(f"audio/{name}.mp3", language="ar", beam_size=1, vad_filter=False)
+          with open(f"{name}.txt", "w", encoding="utf-8") as f:
+              for s in segs:
+                  line = f"{s.start:8.1f} {s.end:8.1f}  {s.text.strip()}"
+                  print(line, flush=True); f.write(line + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with: { name: "t-${{ matrix.name }}", path: "${{ matrix.name }}.txt" }
+
+  commit:
+    needs: transcribe
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dl, pattern: "t-*", merge-multiple: true }
+      - run: |
+          mkdir -p transcripts && cp dl/*.txt transcripts/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add transcripts && git commit -m "Add transcripts" && git pull --rebase && git push
