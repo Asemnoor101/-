@@ -180,7 +180,7 @@ const store = {
 let period = periodFor(riyadhHour());
 let reciter = store.get("reciter","afasy");
 if(!RECITERS[reciter]) reciter = "afasy";
-let speed = parseFloat(store.get("speed","1")) || 1;
+let speed = parseFloat(store.get("speed2","1.5")) || 1.5;
 
 // reciter select
 for(const [id,r] of Object.entries(RECITERS)){
@@ -195,7 +195,7 @@ function setSource(keepPlaying){
   const wasPlaying = keepPlaying && !audio.paused;
   mirrorIdx = 0;
   audio.src = urls()[0];
-  audio.playbackRate = speed;
+  audio.defaultPlaybackRate = audio.playbackRate = speed;
   $("trackName").textContent = (period==="morning"?"أذكار الصباح":"أذكار المساء")+" — "+RECITERS[reciter].name;
   $("fill").style.width="0"; $("cur").textContent="0:00"; $("dur").textContent="--:--";
   if(wasPlaying) play();
@@ -232,7 +232,7 @@ function render(){
 }
 
 function play(){
-  audio.playbackRate = speed;
+  audio.defaultPlaybackRate = audio.playbackRate = speed;
   $("status").textContent = "جاري التحميل…";
   audio.play().then(()=>{ $("status").textContent=""; })
     .catch(()=>{ $("status").textContent="تعذّر تشغيل الصوت. تأكد من الإنترنت وجرّب مرة ثانية."; });
@@ -242,7 +242,7 @@ $("play").addEventListener("click",()=>{ audio.paused ? play() : audio.pause(); 
 audio.addEventListener("play",()=>{ $("play").textContent="❚❚"; $("play").setAttribute("aria-label","إيقاف مؤقت"); });
 audio.addEventListener("pause",()=>{ $("play").textContent="▶"; $("play").setAttribute("aria-label","تشغيل"); });
 audio.addEventListener("ended",()=>{ $("status").textContent="تقبّل الله منك"; });
-audio.addEventListener("loadedmetadata",()=>{ $("dur").textContent=fmt(audio.duration); audio.playbackRate=speed; });
+audio.addEventListener("loadedmetadata",()=>{ $("dur").textContent=fmt(audio.duration); audio.defaultPlaybackRate = audio.playbackRate = speed; });
 audio.addEventListener("timeupdate",()=>{
   $("cur").textContent=fmt(audio.currentTime);
   if(audio.duration) $("fill").style.width=(audio.currentTime/audio.duration*100)+"%";
@@ -251,7 +251,7 @@ audio.addEventListener("error",()=>{
   if(mirrorIdx < urls().length-1){
     mirrorIdx++;
     audio.src = urls()[mirrorIdx];
-    audio.playbackRate = speed;
+    audio.defaultPlaybackRate = audio.playbackRate = speed;
     play();
   } else {
     $("status").textContent="تعذّر تحميل الصوت من كل الخوادم. جرّب قارئ ثاني أو حاول بعد شوي.";
@@ -266,7 +266,7 @@ $("bar").addEventListener("click",e=>{
   audio.currentTime=Math.max(0,Math.min(1,frac))*audio.duration;
 });
 $("reciter").addEventListener("change",e=>{ reciter=e.target.value; store.set("reciter",reciter); setSource(true); });
-$("speed").addEventListener("change",e=>{ speed=parseFloat(e.target.value); store.set("speed",speed); audio.playbackRate=speed; });
+$("speed").addEventListener("change",e=>{ speed=parseFloat(e.target.value); store.set("speed2",speed); audio.defaultPlaybackRate = audio.playbackRate = speed; });
 $("tab-morning").addEventListener("click",()=>{ if(period!=="morning"){ period="morning"; render(); setSource(true);} });
 $("tab-evening").addEventListener("click",()=>{ if(period!=="evening"){ period="evening"; render(); setSource(true);} });
 $("reset").addEventListener("click",()=>{ document.querySelectorAll(".card").forEach(c=>c._reset&&c._reset()); });
@@ -280,7 +280,7 @@ render(); setSource(false);
 let started = false;
 audio.addEventListener("playing",()=>{ started = true; });
 function tryAutoplay(){
-  audio.playbackRate = speed;
+  audio.defaultPlaybackRate = audio.playbackRate = speed;
   audio.play().then(()=>{ started = true; $("status").textContent=""; })
     .catch(()=>{ $("status").textContent = "اضغط في أي مكان لبدء الصوت"; });
 }

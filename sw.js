@@ -1,5 +1,5 @@
 // Caches the app shell so it opens instantly and offline. Audio streams from the network.
-const CACHE = "adhkar-v4";
+const CACHE = "adhkar-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
