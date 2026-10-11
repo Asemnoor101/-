@@ -1,4 +1,11 @@
 file | before (s) | after (s)
-afasy-morning | 1265 | 1263
-jibril-morning | 1308 | 1305
-abkar-both | 900 | 899
+afasy-morning | 1265 | 1222
+afasy-evening | 1257 | 1220
+abbad-morning | 1233 | 1232
+abbad-evening | 1228 | 1226
+jibril-morning | 1308 | 1264
+jibril-evening | 1346 | 1322
+labban-morning | 448 | 431
+labban-evening | 469 | 447
+abkar-both | 900 | 894
+rifai-both | 1023 | 1005
