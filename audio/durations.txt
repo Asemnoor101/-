@@ -1,11 +1,11 @@
-file | before (s) | after (s)
-afasy-morning | 1265 | 1222
-afasy-evening | 1257 | 1220
-abbad-morning | 1233 | 1232
-abbad-evening | 1228 | 1226
-jibril-morning | 1308 | 1264
-jibril-evening | 1346 | 1322
-labban-morning | 448 | 431
-labban-evening | 469 | 447
-abkar-both | 900 | 894
-rifai-both | 1023 | 1005
+file | after silence trim + cuts (s)
+abbad-evening | 1151
+abbad-morning | 1231
+abkar-both | 643
+afasy-evening | 1131
+afasy-morning | 1078
+jibril-evening | 1323
+jibril-morning | 1264
+labban-evening | 447
+labban-morning | 432
+rifai-both | 884
