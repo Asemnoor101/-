@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>أذكار السيارة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column; a sticky player on top, dhikr cards below with tap-to-count. Palette follows the time: dawn sand for morning, dusk indigo for evening. */
+:root{
+  --bg:#f6f1e7; --surface:#fffdf8; --fg:#2b2418; --muted:#7a6d58; --line:#e6dccb;
+  --accent:#b3741f; --accent-ink:#fff8ec; --done:#3f7a55;
+  --display:"Amiri","Noto Naskh Arabic","Geeza Pro",serif;
+  --ui:"IBM Plex Sans Arabic","SF Arabic","Geeza Pro",system-ui,sans-serif;
+  color-scheme:light;
+}
+body.evening{
+  --bg:#141a2b; --surface:#1c2439; --fg:#ece7da; --muted:#9aa3b8; --line:#2c3652;
+  --accent:#d9a648; --accent-ink:#141a2b; --done:#7fc49a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:16px;line-height:1.6;
+  padding:env(safe-area-inset-top,0) 16px calc(env(safe-area-inset-bottom,0) + 32px);transition:background .4s,color .4s}
+.wrap{max-width:640px;margin:0 auto}
+header{padding-block:20px 8px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+h1{font-family:var(--display);font-size:2rem;margin:0;line-height:1.2}
+.when{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:500 .95rem var(--ui);padding:8px 14px;border-radius:999px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.player{position:sticky;top:env(safe-area-inset-top,0);z-index:5;background:var(--bg);padding-block:12px;display:grid;gap:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.play{width:64px;height:64px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:1.6rem;cursor:pointer;flex:none;display:grid;place-items:center}
+.play:focus-visible,.tabs button:focus-visible,select:focus-visible,.card:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.track{flex:1;min-width:0;display:grid;gap:4px}
+.track .name{font-weight:600}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;cursor:pointer}
+.bar span{display:block;height:100%;width:0;background:var(--accent)}
+.time{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between}
+label{font-size:.8rem;color:var(--muted);display:grid;gap:2px;flex:1;min-width:130px}
+select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.status{font-size:.85rem;color:var(--muted);min-height:1.2em}
+.list{display:grid;gap:12px;margin-top:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.card p{font-family:var(--display);font-size:1.35rem;line-height:2;margin:0 0 10px}
+.card .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.count{font:600 .95rem var(--ui);font-variant-numeric:tabular-nums;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 12px;min-width:3.2em;text-align:center}
+.card.done{opacity:.55}
+.card.done .count{border-color:var(--done);color:var(--done)}
+.reset{background:none;border:0;color:var(--muted);font:500 .85rem var(--ui);text-decoration:underline;cursor:pointer;padding:8px 0}
+@media (prefers-reduced-motion:reduce){body{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">أذكار الصباح</h1>
+      <div class="when" id="when"></div>
+    </div>
+  </header>
+
+  <div class="tabs" role="group" aria-label="نوع الأذكار">
+    <button id="tab-morning" aria-pressed="true">الصباح</button>
+    <button id="tab-evening" aria-pressed="false">المساء</button>
+  </div>
+
+  <section class="player" aria-label="المشغل">
+    <div class="row">
+      <button class="play" id="play" aria-label="تشغيل">▶</button>
+      <div class="track">
+        <div class="name" id="trackName"></div>
+        <div class="bar" id="bar"><span id="fill"></span></div>
+        <div class="time"><span id="cur">0:00</span><span id="dur">--:--</span></div>
+      </div>
+    </div>
+    <div class="row">
+      <label for="reciter">القارئ
+        <select id="reciter"></select>
+      </label>
+      <label for="speed">السرعة
+        <select id="speed">
+          <option value="0.75">0.75×</option>
+          <option value="1">1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
+        </select>
+      </label>
+    </div>
+    <div class="status" id="status">اضغط ▶ لبدء الاستماع</div>
+  </section>
+
+  <div class="list" id="list"></div>
+  <button class="reset" id="reset">تصفير العدّادات</button>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+// ---- Audio sources (Internet Archive, via makkahlive.net collection) ----
+const BASE = "https://archive.org/download/makkah-live.-net-athkar-01/MakkahLive.Net_athkar_";
+const RECITERS = {
+  afasy:  {name:"مشاري العفاسي", morning:BASE+"03.mp3", evening:BASE+"04.mp3"},
+  abbad:  {name:"فارس عباد",     morning:BASE+"05.mp3", evening:BASE+"06.mp3"},
+  jibril: {name:"محمد جبريل",    morning:BASE+"07.mp3", evening:BASE+"08.mp3"}
+};
+
+// ---- Adhkar text (حصن المسلم) ; m = morning wording, e = evening wording ----
+const ADHKAR = [
+ {t:"أعوذ بالله من الشيطان الرجيم\nاللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ", n:1, src:"آية الكرسي"},
+ {t:"بسم الله الرحمن الرحيم\nقُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ", n:3, src:"سورة الإخلاص"},
+ {t:"بسم الله الرحمن الرحيم\nقُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ", n:3, src:"سورة الفلق"},
+ {t:"بسم الله الرحمن الرحيم\nقُلْ أَعُوذُ بِرَبِّ النَّاسِ ۝ مَلِكِ النَّاسِ ۝ إِلَٰهِ النَّاسِ ۝ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۝ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۝ مِنَ الْجِنَّةِ وَالنَّاسِ", n:3, src:"سورة الناس"},
+ {m:"أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ",
+  e:"أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ", n:1},
+ {m:"اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ",
+  e:"اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ", n:1},
+ {t:"اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ", n:1, src:"سيد الاستغفار"},
+ {m:"اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ",
+  e:"اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ", n:4},
+ {m:"اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ",
+  e:"اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ", n:1},
+ {t:"اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ", n:3},
+ {t:"حَسْبِيَ اللهُ لَا إِلَهَ إِلَّا هُوَ، عَلَيْهِ تَوَكَّلْتُ، وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ", n:7},
+ {t:"اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي، وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ، وَمِنْ خَلْفِي، وَعَنْ يَمِينِي، وَعَنْ شِمَالِي، وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي", n:1},
+ {t:"اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي، وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءًا، أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ", n:1},
+ {t:"بِسْمِ اللهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ، وَهُوَ السَّمِيعُ الْعَلِيمُ", n:3},
+ {t:"رَضِيتُ بِاللهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ ﷺ نَبِيًّا", n:3},
+ {t:"يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ", n:1},
+ {m:"أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ ﷺ، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ، حَنِيفًا مُسْلِمًا وَمَا كَانَ مِنَ الْمُشْرِكِينَ",
+  e:"أَمْسَيْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ ﷺ، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ، حَنِيفًا مُسْلِمًا وَمَا كَانَ مِنَ الْمُشْرِكِينَ", n:1},
+ {m:"سُبْحَانَ اللهِ وَبِحَمْدِهِ، عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ", mOnly:true, n:3},
+ {e:"أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ", eOnly:true, n:3},
+ {t:"اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ", n:10},
+ {t:"لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", n:10},
+ {t:"سُبْحَانَ اللهِ وَبِحَمْدِهِ", n:100},
+ {m:"أَسْتَغْفِرُ اللهَ وَأَتُوبُ إِلَيْهِ", mOnly:true, n:100}
+];
+
+// ---- Time in Saudi Arabia ----
+function riyadhHour(){
+  const h = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",hour:"2-digit",hour12:false}).format(new Date());
+  return parseInt(h,10) % 24;
+}
+// Morning: 3:00–11:59 · Evening: 15:00–2:59 · 12–15: closer to Asr → evening after 14:00
+function periodFor(h){ return (h>=3 && h<14) ? "morning" : "evening"; }
+
+const $ = id => document.getElementById(id);
+const audio = $("audio");
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem("adhkar:"+k); return v===null?d:v; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem("adhkar:"+k,v); }catch(e){} }
+};
+
+let period = periodFor(riyadhHour());
+let reciter = store.get("reciter","afasy");
+if(!RECITERS[reciter]) reciter = "afasy";
+let speed = parseFloat(store.get("speed","1")) || 1;
+
+// reciter select
+for(const [id,r] of Object.entries(RECITERS)){
+  const o=document.createElement("option"); o.value=id; o.textContent=r.name; $("reciter").append(o);
+}
+$("reciter").value = reciter;
+$("speed").value = String(speed);
+
+function fmt(s){ if(!isFinite(s)) return "--:--"; s=Math.floor(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+function setSource(keepPlaying){
+  const wasPlaying = keepPlaying && !audio.paused;
+  audio.src = RECITERS[reciter][period];
+  audio.playbackRate = speed;
+  $("trackName").textContent = (period==="morning"?"أذكار الصباح":"أذكار المساء")+" — "+RECITERS[reciter].name;
+  $("fill").style.width="0"; $("cur").textContent="0:00"; $("dur").textContent="--:--";
+  if(wasPlaying) play();
+}
+
+function render(){
+  document.body.classList.toggle("evening", period==="evening");
+  $("title").textContent = period==="morning" ? "أذكار الصباح" : "أذكار المساء";
+  $("tab-morning").setAttribute("aria-pressed", period==="morning");
+  $("tab-evening").setAttribute("aria-pressed", period==="evening");
+  const now = new Intl.DateTimeFormat("ar-SA",{timeZone:"Asia/Riyadh",hour:"numeric",minute:"2-digit",weekday:"long"}).format(new Date());
+  $("when").textContent = "بتوقيت السعودية · " + now;
+
+  const list = $("list"); list.innerHTML="";
+  ADHKAR.forEach((d,i)=>{
+    if(period==="morning" && d.eOnly) return;
+    if(period==="evening" && d.mOnly) return;
+    const text = d.t || (period==="morning"?d.m:d.e);
+    const key = period+":"+i;
+    let left = d.n;
+    const card=document.createElement("div"); card.className="card"; card.tabIndex=0;
+    card.setAttribute("role","button");
+    const p=document.createElement("p"); p.style.whiteSpace="pre-line"; p.textContent=text;
+    const meta=document.createElement("div"); meta.className="meta";
+    const src=document.createElement("span"); src.textContent = d.src || (d.n>1 ? "اضغط للعدّ" : "");
+    const c=document.createElement("span"); c.className="count";
+    const upd=()=>{ c.textContent = left>0 ? left : "✓"; card.classList.toggle("done", left===0);
+      card.setAttribute("aria-label", "الذكر "+(i+1)+"، المتبقي "+left); };
+    card.addEventListener("click",()=>{ if(left>0){ left--; upd(); if(navigator.vibrate) navigator.vibrate(15);} });
+    card.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } });
+    card._reset=()=>{ left=d.n; upd(); };
+    upd(); meta.append(src,c); card.append(p,meta); list.append(card);
+  });
+}
+
+function play(){
+  audio.playbackRate = speed;
+  $("status").textContent = "جاري التحميل…";
+  audio.play().then(()=>{ $("status").textContent=""; })
+    .catch(()=>{ $("status").textContent="تعذّر تشغيل الصوت. تأكد من الإنترنت وجرّب مرة ثانية."; });
+}
+
+$("play").addEventListener("click",()=>{ audio.paused ? play() : audio.pause(); });
+audio.addEventListener("play",()=>{ $("play").textContent="❚❚"; $("play").setAttribute("aria-label","إيقاف مؤقت"); });
+audio.addEventListener("pause",()=>{ $("play").textContent="▶"; $("play").setAttribute("aria-label","تشغيل"); });
+audio.addEventListener("ended",()=>{ $("status").textContent="تقبّل الله منك"; });
+audio.addEventListener("loadedmetadata",()=>{ $("dur").textContent=fmt(audio.duration); audio.playbackRate=speed; });
+audio.addEventListener("timeupdate",()=>{
+  $("cur").textContent=fmt(audio.currentTime);
+  if(audio.duration) $("fill").style.width=(audio.currentTime/audio.duration*100)+"%";
+});
+audio.addEventListener("waiting",()=>{ $("status").textContent="جاري التحميل…"; });
+audio.addEventListener("playing",()=>{ $("status").textContent=""; });
+$("bar").addEventListener("click",e=>{
+  if(!audio.duration) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  const frac=(r.right-e.clientX)/r.width; // RTL: progress grows from the right
+  audio.currentTime=Math.max(0,Math.min(1,frac))*audio.duration;
+});
+$("reciter").addEventListener("change",e=>{ reciter=e.target.value; store.set("reciter",reciter); setSource(true); });
+$("speed").addEventListener("change",e=>{ speed=parseFloat(e.target.value); store.set("speed",speed); audio.playbackRate=speed; });
+$("tab-morning").addEventListener("click",()=>{ if(period!=="morning"){ period="morning"; render(); setSource(true);} });
+$("tab-evening").addEventListener("click",()=>{ if(period!=="evening"){ period="evening"; render(); setSource(true);} });
+$("reset").addEventListener("click",()=>{ document.querySelectorAll(".card").forEach(c=>c._reset&&c._reset()); });
+
+// progress fill direction for RTL
+$("fill").style.marginRight="0"; $("bar").style.direction="rtl";
+
+render(); setSource(false);
+
+// optional: ?play=1 tries to start immediately (works when opened from a Shortcut with media permission)
+if(new URLSearchParams(location.search).get("play")==="1"){ play(); }
+</script>
+</body>
+</html>
