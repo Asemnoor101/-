@@ -1,0 +1,4 @@
+file | before (s) | after (s)
+afasy-morning | 1265 | 1263
+jibril-morning | 1308 | 1305
+abkar-both | 900 | 899
