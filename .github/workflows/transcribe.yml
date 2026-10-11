@@ -20,20 +20,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -q faster-whisper==1.0.3
+      - run: pip install -q faster-whisper 2>&1 | tail -5
       - name: Transcribe
-        run: |
-          python - <<'PY'
-          from faster_whisper import WhisperModel
-          name = "${{ matrix.name }}"
-          m = WhisperModel("small", device="cpu", compute_type="int8")
-          segs, _ = m.transcribe(f"audio/{name}.mp3", language="ar", beam_size=1, vad_filter=False)
-          with open(f"{name}.txt", "w", encoding="utf-8") as f:
-              for s in segs:
-                  line = f"{s.start:8.1f} {s.end:8.1f}  {s.text.strip()}"
-                  print(line, flush=True); f.write(line + "\n")
-          PY
+        run: python tools/transcribe.py ${{ matrix.name }} 2>&1 | tee -a ${{ matrix.name }}.log; cat ${{ matrix.name }}.log >> ${{ matrix.name }}.txt || true
       - uses: actions/upload-artifact@v4
+        if: always()
         with: { name: "t-${{ matrix.name }}", path: "${{ matrix.name }}.txt" }
 
   commit:
