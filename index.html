@@ -94,30 +94,34 @@ select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px so
         </select>
       </label>
     </div>
-    <div class="status" id="status">اضغط ▶ لبدء الاستماع</div>
+    <div class="status" id="status"></div>
   </section>
 
   <div class="list" id="list"></div>
   <button class="reset" id="reset">تصفير العدّادات</button>
 </div>
 
-<audio id="audio" preload="none"></audio>
+<audio id="audio" preload="auto" playsinline></audio>
 
 <script>
 // ---- Audio sources (Internet Archive, via makkahlive.net collection) ----
-// Several mirrors: if one server is down, the next one is tried automatically.
-const MIRRORS = [
-  "https://ia601602.us.archive.org/0/items/makkah-live.-net-athkar-01/",
-  "https://ia801602.us.archive.org/0/items/makkah-live.-net-athkar-01/",
-  "https://archive.org/download/makkah-live.-net-athkar-01/"
-];
-const F = n => "MakkahLive.Net_athkar_"+n+".mp3";
+// Each track: trimmed copy in this site first (silence removed), then archive.org backups.
+const TV = n => ["https://ia801403.us.archive.org/1/items/TvQuran.com__Athkar/TvQuran.com_athkar_"+n+".mp3",
+                 "https://ia601602.us.archive.org/0/items/makkah-live.-net-athkar-01/MakkahLive.Net_athkar_"+n+".mp3"];
+const LB = "https://ia800101.us.archive.org/25/items/AthkarAlm2472472472472474aaFaisalLabban/";
+const AB = "https://ia601409.us.archive.org/17/items/Athka247424724724475dreesAbkar/Athkar%20Idrees%20Abkar.mp3";
+const RF = "https://ia902800.us.archive.org/19/items/AthkarHaniAlr247472472424242472efaei/Athkar%20Hani%20Alrefaei.mp3";
 const RECITERS = {
-  afasy:  {name:"مشاري العفاسي", morning:F("03"), evening:F("04")},
-  abbad:  {name:"فارس عباد",     morning:F("05"), evening:F("06")},
-  jibril: {name:"محمد جبريل",    morning:F("07"), evening:F("08")}
+  afasy:  {name:"مشاري العفاسي", morning:["audio/afasy-morning.mp3",...TV("03")], evening:["audio/afasy-evening.mp3",...TV("04")]},
+  abbad:  {name:"فارس عباد",     morning:["audio/abbad-morning.mp3",...TV("05")], evening:["audio/abbad-evening.mp3",...TV("06")]},
+  jibril: {name:"محمد جبريل",    morning:["audio/jibril-morning.mp3",...TV("07")], evening:["audio/jibril-evening.mp3",...TV("08")]},
+  labban: {name:"فيصل لبان",     morning:["audio/labban-morning.mp3", LB+"Athkar%20Alsabah%20-%20Faisal%20Labban.mp3"],
+                                 evening:["audio/labban-evening.mp3", LB+"Athkar%20Almasaa%20-%20Faisal%20Labban.mp3"]},
+  abkar:  {name:"إدريس أبكر (صباح ومساء معاً)", morning:["audio/abkar-both.mp3", AB], evening:["audio/abkar-both.mp3", AB]},
+  rifai:  {name:"هاني الرفاعي (صباح ومساء معاً)", morning:["audio/rifai-both.mp3", RF], evening:["audio/rifai-both.mp3", RF]}
 };
 let mirrorIdx = 0;
+const urls = () => RECITERS[reciter][period];
 
 // ---- Adhkar text (حصن المسلم) ; m = morning wording, e = evening wording ----
 const ADHKAR = [
@@ -183,7 +187,7 @@ function fmt(s){ if(!isFinite(s)) return "--:--"; s=Math.floor(s); return Math.f
 function setSource(keepPlaying){
   const wasPlaying = keepPlaying && !audio.paused;
   mirrorIdx = 0;
-  audio.src = MIRRORS[mirrorIdx] + RECITERS[reciter][period];
+  audio.src = urls()[0];
   audio.playbackRate = speed;
   $("trackName").textContent = (period==="morning"?"أذكار الصباح":"أذكار المساء")+" — "+RECITERS[reciter].name;
   $("fill").style.width="0"; $("cur").textContent="0:00"; $("dur").textContent="--:--";
@@ -237,9 +241,9 @@ audio.addEventListener("timeupdate",()=>{
   if(audio.duration) $("fill").style.width=(audio.currentTime/audio.duration*100)+"%";
 });
 audio.addEventListener("error",()=>{
-  if(mirrorIdx < MIRRORS.length-1){
+  if(mirrorIdx < urls().length-1){
     mirrorIdx++;
-    audio.src = MIRRORS[mirrorIdx] + RECITERS[reciter][period];
+    audio.src = urls()[mirrorIdx];
     audio.playbackRate = speed;
     play();
   } else {
@@ -265,8 +269,21 @@ $("fill").style.marginRight="0"; $("bar").style.direction="rtl";
 
 render(); setSource(false);
 
-// optional: ?play=1 tries to start immediately (works when opened from a Shortcut with media permission)
-if(new URLSearchParams(location.search).get("play")==="1"){ play(); }
+// Start right away. If the browser blocks sound until a tap, the first tap anywhere starts it.
+let started = false;
+audio.addEventListener("playing",()=>{ started = true; });
+function tryAutoplay(){
+  audio.playbackRate = speed;
+  audio.play().then(()=>{ started = true; $("status").textContent=""; })
+    .catch(()=>{ $("status").textContent = "اضغط في أي مكان لبدء الصوت"; });
+}
+function firstTap(e){
+  if(started) return;
+  if(e.target.closest("#play,select")) return; // those controls handle themselves
+  started = true; play();
+}
+document.addEventListener("pointerdown", firstTap, {capture:true});
+tryAutoplay();
 </script>
 </body>
 </html>
