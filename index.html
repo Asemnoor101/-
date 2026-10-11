@@ -30,6 +30,7 @@ body.evening{
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:16px;line-height:1.6;
   padding:env(safe-area-inset-top,0) 16px calc(env(safe-area-inset-bottom,0) + 32px);transition:background .4s,color .4s}
@@ -59,6 +60,23 @@ select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px so
 .count{font:600 .95rem var(--ui);font-variant-numeric:tabular-nums;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 12px;min-width:3.2em;text-align:center}
 .card.done{opacity:.55}
 .card.done .count{border-color:var(--done);color:var(--done)}
+header{flex-wrap:wrap}
+.head-main{min-width:0}
+.today{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{font-size:.75rem;padding:2px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{border-color:var(--done);color:var(--done)}
+.chip.ok::before{content:"✓ "}
+.streak{font-size:.75rem;color:var(--accent);font-weight:600}
+.link{background:none;border:0;padding:0;color:var(--accent);font:500 .85rem var(--ui);text-decoration:underline;cursor:pointer}
+.banner{margin-block:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--done);color:var(--done);display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;font-weight:500}
+.resume{font-size:.85rem;color:var(--muted)}
+.extras h2{font-family:var(--display);font-size:1.4rem;margin:16px 0 8px}
+.note{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+.card.now{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;opacity:1}
+.card.now p{color:var(--fg)}
+.meta-r{display:flex;gap:8px;align-items:center}
+.seek{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;font:500 .75rem var(--ui);padding:3px 10px;cursor:pointer}
+.seek:focus-visible,.link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .reset{background:none;border:0;color:var(--muted);font:500 .85rem var(--ui);text-decoration:underline;cursor:pointer;padding:8px 0}
 @media (prefers-reduced-motion:reduce){body{transition:none}}
 </style>
@@ -66,18 +84,28 @@ select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px so
 <body>
 <div class="wrap">
   <header>
-    <div>
+    <div class="head-main">
       <h1 id="title">أذكار الصباح</h1>
-      <div class="when" id="when"></div>
+      <div class="when"><span id="times"></span> <button class="link" id="locate" type="button">موقعي</button></div>
+    </div>
+    <div class="today" aria-label="إنجاز اليوم">
+      <span class="chip" id="chip-m">الصباح</span>
+      <span class="chip" id="chip-e">المساء</span>
+      <span class="streak" id="streak"></span>
     </div>
   </header>
+
+  <div class="banner" id="doneBanner" hidden>
+    <span id="doneText"></span>
+    <button class="link" id="again" type="button">تشغيل مرة ثانية</button>
+  </div>
 
   <div class="tabs" role="group" aria-label="نوع الأذكار">
     <button id="tab-morning" aria-pressed="true">الصباح</button>
     <button id="tab-evening" aria-pressed="false">المساء</button>
   </div>
 
-  <section class="player" aria-label="المشغل">
+  <section class="player" id="player" aria-label="المشغل">
     <div class="row">
       <button class="play" id="play" aria-label="تشغيل">▶</button>
       <div class="track">
@@ -102,8 +130,15 @@ select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px so
       </label>
     </div>
     <div class="status" id="status"></div>
+    <div class="resume" id="resume" hidden>كمّلنا من حيث وقفت · <button class="link" id="fromStart" type="button">ابدأ من البداية</button></div>
   </section>
 
+  <section class="extras" id="extras" hidden>
+    <h2>أذكار للطريق</h2>
+    <div class="list" id="extrasList"></div>
+  </section>
+
+  <p class="note" id="listNote"></p>
   <div class="list" id="list"></div>
   <button class="reset" id="reset">تصفير العدّادات</button>
 </div>
@@ -159,30 +194,94 @@ const ADHKAR = [
  {t:"اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ", n:10},
  {t:"لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", n:10},
  {t:"سُبْحَانَ اللهِ وَبِحَمْدِهِ", n:100},
- {m:"أَسْتَغْفِرُ اللهَ وَأَتُوبُ إِلَيْهِ", mOnly:true, n:100}
+ {m:"أَسْتَغْفِرُ اللهَ وَأَتُوبُ إِلَيْهِ", mOnly:true, n:100},
+ {t:"اللَّهُمَّ رَبَّنَا لَكَ الْحَمْدُ بِمَا خَلَقْتَنَا وَرَزَقْتَنَا وَهَدَيْتَنَا وَأَنْقَذْتَنَا وَفَرَّجْتَ عَنَّا، لَكَ الْحَمْدُ بِالْإِسْلَامِ وَالْقُرْآنِ، وَلَكَ الْحَمْدُ بِالْأَهْلِ وَالْمَالِ وَالْمُعَافَاةِ، كَبَتَّ عَدُوَّنَا، وَبَسَطْتَ رِزْقَنَا، وَأَظْهَرْتَ أَمْنَنَا، وَجَمَعْتَ فُرْقَتَنَا، وَأَحْسَنْتَ مُعَافَاتَنَا، وَمِنْ كُلِّ مَا سَأَلْنَاكَ رَبَّنَا أَعْطَيْتَنَا، فَلَكَ الْحَمْدُ عَلَى ذَلِكَ حَمْدًا كَثِيرًا، لَكَ الْحَمْدُ بِكُلِّ نِعْمَةٍ أَنْعَمْتَ بِهَا عَلَيْنَا فِي قَدِيمٍ أَوْ حَدِيثٍ، أَوْ سِرٍّ أَوْ عَلَانِيَةٍ، أَوْ خَاصَّةٍ أَوْ عَامَّةٍ، أَوْ حَيٍّ أَوْ مَيِّتٍ، أَوْ شَاهِدٍ أَوْ غَائِبٍ، لَكَ الْحَمْدُ حَتَّى تَرْضَى، وَلَكَ الْحَمْدُ إِذَا رَضِيتَ، وَصَلَّى اللهُ عَلَى نَبِيِّنَا مُحَمَّدٍ وَعَلَى آلِهِ وَصَحْبِهِ وَسَلَّمَ", n:1, src:"دعاء الحمد", syncOnly:true},
+ {m:"اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا", mOnly:true, n:1, syncOnly:true},
+ {m:"أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ رَبِّ الْعَالَمِينَ، اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَ هَذَا الْيَوْمِ: فَتْحَهُ، وَنَصْرَهُ، وَنُورَهُ، وَبَرَكَتَهُ، وَهُدَاهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِيهِ وَشَرِّ مَا بَعْدَهُ",
+  e:"أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ رَبِّ الْعَالَمِينَ، اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَ هَذِهِ اللَّيْلَةِ: فَتْحَهَا، وَنَصْرَهَا، وَنُورَهَا، وَبَرَكَتَهَا، وَهُدَاهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِيهَا وَشَرِّ مَا بَعْدَهَا", n:1, syncOnly:true},
+ {t:"آمَنَ الرَّسُولُ بِمَا أُنزِلَ إِلَيْهِ مِن رَّبِّهِ وَالْمُؤْمِنُونَ ۚ كُلٌّ آمَنَ بِاللَّهِ وَمَلَائِكَتِهِ وَكُتُبِهِ وَرُسُلِهِ لَا نُفَرِّقُ بَيْنَ أَحَدٍ مِّن رُّسُلِهِ ۚ وَقَالُوا سَمِعْنَا وَأَطَعْنَا ۖ غُفْرَانَكَ رَبَّنَا وَإِلَيْكَ الْمَصِيرُ ۝ لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا ۚ لَهَا مَا كَسَبَتْ وَعَلَيْهَا مَا اكْتَسَبَتْ ۗ رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا ۚ رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا ۚ رَبَّنَا وَلَا تُحَمِّلْنَا مَا لَا طَاقَةَ لَنَا بِهِ ۖ وَاعْفُ عَنَّا وَاغْفِرْ لَنَا وَارْحَمْنَا ۚ أَنتَ مَوْلَانَا فَانصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ", n:1, src:"خواتيم سورة البقرة", syncOnly:true},
+ {t:"اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِهِ وَصَحْبِهِ أَجْمَعِينَ", n:10, syncOnly:true},
+ {t:"اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ، كَمَا صَلَّيْتَ عَلَى إِبْرَاهِيمَ وَعَلَى آلِ إِبْرَاهِيمَ، إِنَّكَ حَمِيدٌ مَجِيدٌ، اللَّهُمَّ بَارِكْ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ، كَمَا بَارَكْتَ عَلَى إِبْرَاهِيمَ وَعَلَى آلِ إِبْرَاهِيمَ، إِنَّكَ حَمِيدٌ مَجِيدٌ", n:10, syncOnly:true}
 ];
 
-// ---- Time in Saudi Arabia ----
-function riyadhHour(){
-  const h = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",hour:"2-digit",hour12:false}).format(new Date());
-  return parseInt(h,10) % 24;
+// Shown once today's adhkar for this period are done
+const EXTRAS = [
+ {t:"بِسْمِ اللهِ، الْحَمْدُ لِلَّهِ، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ، وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ، الْحَمْدُ لِلَّهِ، الْحَمْدُ لِلَّهِ، الْحَمْدُ لِلَّهِ، اللهُ أَكْبَرُ، اللهُ أَكْبَرُ، اللهُ أَكْبَرُ، سُبْحَانَكَ اللَّهُمَّ إِنِّي ظَلَمْتُ نَفْسِي فَاغْفِرْ لِي، فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ", n:1, src:"دعاء الركوب"},
+ {t:"أَسْتَغْفِرُ اللهَ وَأَتُوبُ إِلَيْهِ", n:100, src:"الاستغفار"},
+ {t:"لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ", n:33}
+];
+
+// ---- Prayer times (Umm al-Qura method: Fajr 18.5°, Asr = shadow 1). Computed on the phone, no internet. ----
+const CITY_DEFAULT = {name:"جدة", lat:21.5433, lng:39.1728};
+const TZ = 3; // Saudi Arabia, no daylight saving
+const rad = d => d*Math.PI/180, deg = r => r*180/Math.PI;
+const fixH = h => ((h%24)+24)%24;
+function sunPos(jd){
+  const d = jd - 2451545.0;
+  const g = rad((357.529 + 0.98560028*d) % 360);
+  const q = (280.459 + 0.98564736*d) % 360;
+  const L = rad((q + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) % 360);
+  const e = rad(23.439 - 0.00000036*d);
+  const RA = fixH(deg(Math.atan2(Math.cos(e)*Math.sin(L), Math.cos(L)))/15);
+  return {dec: Math.asin(Math.sin(e)*Math.sin(L)), eqt: q/15 - RA};
 }
-// Morning: 3:00–11:59 · Evening: 15:00–2:59 · 12–15: closer to Asr → evening after 14:00
-function periodFor(h){ return (h>=3 && h<14) ? "morning" : "evening"; }
+function prayerTimes(date, lat, lng){
+  // date = a Date for the Saudi calendar day; returns hours (decimal, Saudi time)
+  const y=date.y, m=date.m, dd=date.d;
+  const A=Math.floor((14-m)/12), Y=y+4800-A, M=m+12*A-3;
+  const jd = dd + Math.floor((153*M+2)/5) + 365*Y + Math.floor(Y/4) - Math.floor(Y/100) + Math.floor(Y/400) - 32045 - lng/360;
+  const {dec, eqt} = sunPos(jd);
+  let eq = eqt; if(eq>12) eq-=24; if(eq<-12) eq+=24;
+  const noon = 12 + TZ - lng/15 - eq;
+  const phi = rad(lat);
+  const T = a => deg(Math.acos((-Math.sin(rad(a)) - Math.sin(dec)*Math.sin(phi)) / (Math.cos(dec)*Math.cos(phi))))/15;
+  const asrAlt = Math.atan(1/(1+Math.tan(Math.abs(phi-dec))));
+  const asr = deg(Math.acos((Math.sin(asrAlt) - Math.sin(dec)*Math.sin(phi)) / (Math.cos(dec)*Math.cos(phi))))/15;
+  return {fajr: noon - T(18.5), dhuhr: noon + 2/60, asr: noon + asr};
+}
+
+// Saudi local date/time pieces
+function saNow(){
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false})
+    .formatToParts(new Date()).map(p=>[p.type,p.value]));
+  return {y:+parts.year, m:+parts.month, d:+parts.day, h:(+parts.hour%24) + (+parts.minute)/60 + (+parts.second)/3600};
+}
+const dayStr = o => o.y+"-"+String(o.m).padStart(2,"0")+"-"+String(o.d).padStart(2,"0");
+function shiftDay(o, n){ const t=new Date(Date.UTC(o.y,o.m-1,o.d+n)); return {y:t.getUTCFullYear(), m:t.getUTCMonth()+1, d:t.getUTCDate()}; }
+function hhmm(h){
+  h=fixH(h); let H=Math.floor(h), M=Math.round((h-H)*60); if(M===60){H++;M=0;}
+  const ap = H<12 ? "ص" : "م"; const h12 = ((H+11)%12)+1;
+  return h12+":"+String(M).padStart(2,"0")+" "+ap;
+}
 
 const $ = id => document.getElementById(id);
 const audio = $("audio");
 const store = {
   get(k,d){ try{ const v=localStorage.getItem("adhkar:"+k); return v===null?d:v; }catch(e){ return d; } },
-  set(k,v){ try{ localStorage.setItem("adhkar:"+k,v); }catch(e){} }
+  set(k,v){ try{ localStorage.setItem("adhkar:"+k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem("adhkar:"+k); }catch(e){} }
 };
 
-let period = periodFor(riyadhHour());
+let city = (()=>{ try{ return JSON.parse(store.get("city","null")) || CITY_DEFAULT; }catch(e){ return CITY_DEFAULT; } })();
+
+// Morning = Fajr → Dhuhr. Evening = Dhuhr → next Fajr (evening after midnight belongs to the previous day).
+function currentSlot(){
+  const n = saNow(); const t = prayerTimes(n, city.lat, city.lng);
+  if(n.h >= t.fajr && n.h < t.dhuhr) return {period:"morning", day:dayStr(n), times:t};
+  if(n.h < t.fajr) return {period:"evening", day:dayStr(shiftDay(n,-1)), times:t};
+  return {period:"evening", day:dayStr(n), times:t};
+}
+
+let slot = currentSlot();
+let period = slot.period;
 let reciter = store.get("reciter","afasy");
 if(!RECITERS[reciter]) reciter = "afasy";
 let speed = parseFloat(store.get("speed2","1.5")) || 1.5;
+let SYNC = {};          // file -> [[time, adhkarIndex], ...]
+let cardsByIdx = {};    // adhkarIndex -> card element
+let currentIdx = null;
+let userScrolledAt = 0;
 
-// reciter select
 for(const [id,r] of Object.entries(RECITERS)){
   const o=document.createElement("option"); o.value=id; o.textContent=r.name; $("reciter").append(o);
 }
@@ -190,62 +289,165 @@ $("reciter").value = reciter;
 $("speed").value = String(speed);
 
 function fmt(s){ if(!isFinite(s)) return "--:--"; s=Math.floor(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+const fileKey = () => urls()[0].replace(/^audio\//,"").replace(/\.mp3$/,"");
+const doneKey = (day, p) => "done:"+day+":"+p;
+const posKey = () => "pos:"+slot.day+":"+period+":"+reciter;
+const isDone = (day, p) => store.get(doneKey(day,p), "") === "1";
+
+// ---- completion + streak ----
+function markDone(){
+  if(isDone(slot.day, period)) return;
+  store.set(doneKey(slot.day, period), "1");
+  store.del(posKey());
+  renderStatus();
+}
+function streak(){
+  // consecutive days with both morning and evening done, counting back from today (today counts only if complete)
+  let n=0, d=saNow(); if(!(isDone(dayStr(d),"morning") && isDone(dayStr(d),"evening"))) d=shiftDay(d,-1);
+  for(let i=0;i<400;i++){ const k=dayStr(d); if(isDone(k,"morning") && isDone(k,"evening")){ n++; d=shiftDay(d,-1);} else break; }
+  return n;
+}
+
+function renderStatus(){
+  const t = slot.times;
+  $("times").textContent = "الفجر "+hhmm(t.fajr)+" · الظهر "+hhmm(t.dhuhr)+" · العصر "+hhmm(t.asr)+" — "+city.name;
+  const today = slot.day;
+  $("chip-m").classList.toggle("ok", isDone(today,"morning"));
+  $("chip-e").classList.toggle("ok", isDone(today,"evening"));
+  const s = streak();
+  $("streak").textContent = s>0 ? (s===1 ? "يوم كامل" : s===2 ? "يومين متتاليين" : s+" أيام متتالية") : "";
+  const done = isDone(slot.day, period) && period===slot.period;
+  $("doneBanner").hidden = !done;
+  $("extras").hidden = !done;
+  if(done) $("doneText").textContent = "أتممت "+(period==="morning"?"أذكار الصباح":"أذكار المساء")+" اليوم، تقبّل الله منك";
+}
 
 function setSource(keepPlaying){
   const wasPlaying = keepPlaying && !audio.paused;
-  mirrorIdx = 0;
+  mirrorIdx = 0; currentIdx = null; resumeTo = null;
   audio.src = urls()[0];
   audio.defaultPlaybackRate = audio.playbackRate = speed;
   $("trackName").textContent = (period==="morning"?"أذكار الصباح":"أذكار المساء")+" — "+RECITERS[reciter].name;
   $("fill").style.width="0"; $("cur").textContent="0:00"; $("dur").textContent="--:--";
+  const saved = parseFloat(store.get(posKey(),"0"));
+  if(saved > 5) resumeTo = saved;
+  renderCards();
   if(wasPlaying) play();
 }
+let resumeTo = null;
+
+function makeCard(d, i, onSeek){
+  const text = d.t || (period==="morning" ? (d.m||d.e) : (d.e||d.m));
+  let left = d.n;
+  const card=document.createElement("div"); card.className="card"; card.tabIndex=0; card.setAttribute("role","button");
+  const p=document.createElement("p"); p.style.whiteSpace="pre-line"; p.textContent=text;
+  const meta=document.createElement("div"); meta.className="meta";
+  const src=document.createElement("span"); src.textContent = d.src || (d.n>1 ? "اضغط للعدّ" : "");
+  const right=document.createElement("span"); right.className="meta-r";
+  if(onSeek){
+    const go=document.createElement("button"); go.className="seek"; go.type="button"; go.textContent="▶ من هنا";
+    go.addEventListener("click",e=>{ e.stopPropagation(); onSeek(); });
+    right.append(go);
+  }
+  const c=document.createElement("span"); c.className="count"; right.append(c);
+  const upd=()=>{ c.textContent = left>0 ? left : "✓"; card.classList.toggle("done", left===0);
+    card.setAttribute("aria-label", "المتبقي "+left); };
+  card.addEventListener("click",()=>{ if(left>0){ left--; upd(); if(navigator.vibrate) navigator.vibrate(15); checkAllCounted(); } });
+  card.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } });
+  card._reset=()=>{ left=d.n; upd(); };
+  card._left=()=>left;
+  upd(); meta.append(src,right); card.append(p,meta);
+  return card;
+}
+
+function checkAllCounted(){
+  const cards=[...$("list").querySelectorAll(".card")];
+  if(cards.length && cards.every(c=>c._left()===0)) markDone();
+}
+
+function renderCards(){
+  const list = $("list"); list.innerHTML=""; cardsByIdx = {};
+  const sync = SYNC[fileKey()];
+  let order;
+  if(sync && sync.length){
+    order=[]; for(const [,i] of sync) if(!order.includes(i)) order.push(i);   // the reciter's own order
+    $("listNote").textContent = "النص يمشي مع صوت القارئ. اضغط على الذكر للعدّ، أو \"من هنا\" لتنتقل له.";
+  } else {
+    order = ADHKAR.map((d,i)=>i).filter(i=>{ const d=ADHKAR[i];
+      return !d.syncOnly && !(period==="morning" && d.eOnly) && !(period==="evening" && d.mOnly); });
+    $("listNote").textContent = "";
+  }
+  for(const i of order){
+    const first = sync ? (sync.find(s=>s[1]===i)||[])[0] : null;
+    const card = makeCard(ADHKAR[i], i, sync ? ()=>{ seekTo(first); } : null);
+    cardsByIdx[i]=card; list.append(card);
+  }
+  const ex=$("extrasList"); ex.innerHTML="";
+  EXTRAS.forEach((d,i)=>ex.append(makeCard(d,"x"+i,null)));
+}
+
+function seekTo(t){
+  if(t==null) return;
+  const go=()=>{ audio.currentTime=Math.max(0,t-0.3); if(audio.paused) play(); };
+  if(audio.readyState>=1) go(); else { audio.addEventListener("loadedmetadata",go,{once:true}); play(); }
+}
+
+function highlight(){
+  const sync = SYNC[fileKey()]; if(!sync) return;
+  const t = audio.currentTime;
+  let lo=0, hi=sync.length-1, k=-1;
+  while(lo<=hi){ const mid=(lo+hi)>>1; if(sync[mid][0]<=t+0.2){ k=mid; lo=mid+1; } else hi=mid-1; }
+  const idx = k>=0 ? sync[k][1] : null;
+  if(idx===currentIdx) return;
+  if(currentIdx!=null && cardsByIdx[currentIdx]) cardsByIdx[currentIdx].classList.remove("now");
+  currentIdx = idx;
+  const c = idx!=null ? cardsByIdx[idx] : null;
+  if(c){
+    c.classList.add("now");
+    if(Date.now()-userScrolledAt > 5000 && !audio.paused){
+      const top = c.getBoundingClientRect().top + window.scrollY - $("player").offsetHeight - 24;
+      window.scrollTo({top, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+    }
+  }
+}
+["touchmove","wheel"].forEach(ev=>window.addEventListener(ev,()=>{ userScrolledAt=Date.now(); },{passive:true}));
 
 function render(){
   document.body.classList.toggle("evening", period==="evening");
   $("title").textContent = period==="morning" ? "أذكار الصباح" : "أذكار المساء";
   $("tab-morning").setAttribute("aria-pressed", period==="morning");
   $("tab-evening").setAttribute("aria-pressed", period==="evening");
-  const now = new Intl.DateTimeFormat("ar-SA",{timeZone:"Asia/Riyadh",hour:"numeric",minute:"2-digit",weekday:"long"}).format(new Date());
-  $("when").textContent = "بتوقيت السعودية · " + now;
-
-  const list = $("list"); list.innerHTML="";
-  ADHKAR.forEach((d,i)=>{
-    if(period==="morning" && d.eOnly) return;
-    if(period==="evening" && d.mOnly) return;
-    const text = d.t || (period==="morning"?d.m:d.e);
-    const key = period+":"+i;
-    let left = d.n;
-    const card=document.createElement("div"); card.className="card"; card.tabIndex=0;
-    card.setAttribute("role","button");
-    const p=document.createElement("p"); p.style.whiteSpace="pre-line"; p.textContent=text;
-    const meta=document.createElement("div"); meta.className="meta";
-    const src=document.createElement("span"); src.textContent = d.src || (d.n>1 ? "اضغط للعدّ" : "");
-    const c=document.createElement("span"); c.className="count";
-    const upd=()=>{ c.textContent = left>0 ? left : "✓"; card.classList.toggle("done", left===0);
-      card.setAttribute("aria-label", "الذكر "+(i+1)+"، المتبقي "+left); };
-    card.addEventListener("click",()=>{ if(left>0){ left--; upd(); if(navigator.vibrate) navigator.vibrate(15);} });
-    card.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } });
-    card._reset=()=>{ left=d.n; upd(); };
-    upd(); meta.append(src,c); card.append(p,meta); list.append(card);
-  });
+  renderStatus();
 }
 
 function play(){
   audio.defaultPlaybackRate = audio.playbackRate = speed;
   $("status").textContent = "جاري التحميل…";
-  audio.play().then(()=>{ $("status").textContent=""; })
-    .catch(()=>{ $("status").textContent="تعذّر تشغيل الصوت. تأكد من الإنترنت وجرّب مرة ثانية."; });
+  audio.play().then(()=>{ started=true; $("status").textContent=""; })
+    .catch(()=>{ $("status").textContent="اضغط ▶ أو في أي مكان لبدء الصوت"; });
 }
 
 $("play").addEventListener("click",()=>{ audio.paused ? play() : audio.pause(); });
 audio.addEventListener("play",()=>{ $("play").textContent="❚❚"; $("play").setAttribute("aria-label","إيقاف مؤقت"); });
-audio.addEventListener("pause",()=>{ $("play").textContent="▶"; $("play").setAttribute("aria-label","تشغيل"); });
-audio.addEventListener("ended",()=>{ $("status").textContent="تقبّل الله منك"; });
-audio.addEventListener("loadedmetadata",()=>{ $("dur").textContent=fmt(audio.duration); audio.defaultPlaybackRate = audio.playbackRate = speed; });
+audio.addEventListener("pause",()=>{ $("play").textContent="▶"; $("play").setAttribute("aria-label","تشغيل");
+  if(audio.currentTime>5 && audio.duration && audio.currentTime < audio.duration-5) store.set(posKey(), audio.currentTime.toFixed(1)); });
+audio.addEventListener("ended",()=>{ $("status").textContent="تقبّل الله منك"; if(period===slot.period) markDone(); store.del(posKey()); });
+audio.addEventListener("loadedmetadata",()=>{
+  $("dur").textContent=fmt(audio.duration); audio.defaultPlaybackRate = audio.playbackRate = speed;
+  if(resumeTo && resumeTo < audio.duration-10){
+    audio.currentTime = Math.max(0, resumeTo-3);
+    $("resume").hidden = false;
+  }
+  resumeTo = null;
+});
+let lastSave = 0;
 audio.addEventListener("timeupdate",()=>{
   $("cur").textContent=fmt(audio.currentTime);
   if(audio.duration) $("fill").style.width=(audio.currentTime/audio.duration*100)+"%";
+  highlight();
+  const now=Date.now();
+  if(now-lastSave>3000 && audio.currentTime>5){ lastSave=now; store.set(posKey(), audio.currentTime.toFixed(1)); }
+  if(audio.duration && audio.currentTime > audio.duration-2 && period===slot.period) markDone();
 });
 audio.addEventListener("error",()=>{
   if(mirrorIdx < urls().length-1){
@@ -254,7 +456,7 @@ audio.addEventListener("error",()=>{
     audio.defaultPlaybackRate = audio.playbackRate = speed;
     play();
   } else {
-    $("status").textContent="تعذّر تحميل الصوت من كل الخوادم. جرّب قارئ ثاني أو حاول بعد شوي.";
+    $("status").textContent="تعذّر تحميل الصوت. تأكد من الإنترنت أو جرّب قارئ ثاني.";
   }
 });
 audio.addEventListener("waiting",()=>{ $("status").textContent="جاري التحميل…"; });
@@ -265,39 +467,50 @@ $("bar").addEventListener("click",e=>{
   const frac=(r.right-e.clientX)/r.width; // RTL: progress grows from the right
   audio.currentTime=Math.max(0,Math.min(1,frac))*audio.duration;
 });
-$("reciter").addEventListener("change",e=>{ reciter=e.target.value; store.set("reciter",reciter); setSource(true); });
+$("reciter").addEventListener("change",e=>{ reciter=e.target.value; store.set("reciter",reciter); $("resume").hidden=true; setSource(true); });
 $("speed").addEventListener("change",e=>{ speed=parseFloat(e.target.value); store.set("speed2",speed); audio.defaultPlaybackRate = audio.playbackRate = speed; });
-$("tab-morning").addEventListener("click",()=>{ if(period!=="morning"){ period="morning"; render(); setSource(true);} });
-$("tab-evening").addEventListener("click",()=>{ if(period!=="evening"){ period="evening"; render(); setSource(true);} });
+$("tab-morning").addEventListener("click",()=>{ if(period!=="morning"){ period="morning"; $("resume").hidden=true; render(); setSource(true);} });
+$("tab-evening").addEventListener("click",()=>{ if(period!=="evening"){ period="evening"; $("resume").hidden=true; render(); setSource(true);} });
 $("reset").addEventListener("click",()=>{ document.querySelectorAll(".card").forEach(c=>c._reset&&c._reset()); });
+$("fromStart").addEventListener("click",()=>{ store.del(posKey()); audio.currentTime=0; $("resume").hidden=true; if(audio.paused) play(); });
+$("again").addEventListener("click",()=>{ store.del(doneKey(slot.day,period)); renderStatus(); audio.currentTime=0; play(); });
+$("locate").addEventListener("click",()=>{
+  if(!navigator.geolocation){ $("times").textContent="تحديد الموقع غير متاح في هذا المتصفح"; return; }
+  $("times").textContent="جاري تحديد موقعك…";
+  navigator.geolocation.getCurrentPosition(p=>{
+    city={name:"موقعك", lat:+p.coords.latitude.toFixed(3), lng:+p.coords.longitude.toFixed(3)};
+    store.set("city", JSON.stringify(city)); slot=currentSlot(); renderStatus();
+  }, ()=>{ renderStatus(); $("status").textContent="ما قدرت أحدد موقعك، أستخدم مواقيت "+city.name; }, {timeout:10000, maximumAge:86400000});
+});
 
-// progress fill direction for RTL
 $("fill").style.marginRight="0"; $("bar").style.direction="rtl";
-
-render(); setSource(false);
 
 // Start right away. If the browser blocks sound until a tap, the first tap anywhere starts it.
 let started = false;
 audio.addEventListener("playing",()=>{ started = true; });
-function tryAutoplay(){
-  audio.defaultPlaybackRate = audio.playbackRate = speed;
-  audio.play().then(()=>{ started = true; $("status").textContent=""; })
-    .catch(()=>{ $("status").textContent = "اضغط في أي مكان لبدء الصوت"; });
-}
 function firstTap(e){
   if(started) return;
-  if(e.target.closest("#play,select")) return; // those controls handle themselves
+  if(e.target.closest("#play,select,button")) return;
   started = true; play();
 }
 document.addEventListener("pointerdown", firstTap, {capture:true});
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
-// Opened from the home screen after a while: refresh morning/evening to the current time
+
+// Re-opened later (home-screen app): move to the right period if the time changed
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState!=="visible") return;
-  const p = periodFor(riyadhHour());
-  if(p!==period && audio.paused){ period=p; render(); setSource(false); }
+  const s=currentSlot();
+  if((s.period!==slot.period || s.day!==slot.day) && audio.paused){ slot=s; period=s.period; render(); setSource(false); }
 });
-tryAutoplay();
+
+render(); setSource(false);
+fetch("sync.json").then(r=>r.ok?r.json():{}).then(j=>{ SYNC=j||{}; renderCards(); highlight(); }).catch(()=>{});
+
+// Autoplay unless this period is already done today
+if(!isDone(slot.day, period)){
+  audio.defaultPlaybackRate = audio.playbackRate = speed;
+  audio.play().then(()=>{ started=true; }).catch(()=>{ $("status").textContent = "اضغط في أي مكان لبدء الصوت"; });
+}
 </script>
 </body>
 </html>
