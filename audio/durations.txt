@@ -1,6 +1,4 @@
 file | duration after all cuts (s)
-abbad-evening | 1151
-abbad-morning | 1231
 abkar-both | 595
 afasy-evening | 1092
 afasy-morning | 1060
