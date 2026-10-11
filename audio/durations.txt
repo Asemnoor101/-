@@ -1,9 +1,9 @@
-file | after silence trim + cuts (s)
+file | duration after all cuts (s)
 abbad-evening | 1151
 abbad-morning | 1231
-abkar-both | 643
-afasy-evening | 1109
-afasy-morning | 1078
+abkar-both | 595
+afasy-evening | 1092
+afasy-morning | 1060
 jibril-evening | 1323
 jibril-morning | 1264
 labban-evening | 447
