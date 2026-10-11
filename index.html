@@ -105,12 +105,19 @@ select{font:500 1rem var(--ui);padding:8px 10px;border-radius:10px;border:1px so
 
 <script>
 // ---- Audio sources (Internet Archive, via makkahlive.net collection) ----
-const BASE = "https://archive.org/download/makkah-live.-net-athkar-01/MakkahLive.Net_athkar_";
+// Several mirrors: if one server is down, the next one is tried automatically.
+const MIRRORS = [
+  "https://ia601602.us.archive.org/0/items/makkah-live.-net-athkar-01/",
+  "https://ia801602.us.archive.org/0/items/makkah-live.-net-athkar-01/",
+  "https://archive.org/download/makkah-live.-net-athkar-01/"
+];
+const F = n => "MakkahLive.Net_athkar_"+n+".mp3";
 const RECITERS = {
-  afasy:  {name:"مشاري العفاسي", morning:BASE+"03.mp3", evening:BASE+"04.mp3"},
-  abbad:  {name:"فارس عباد",     morning:BASE+"05.mp3", evening:BASE+"06.mp3"},
-  jibril: {name:"محمد جبريل",    morning:BASE+"07.mp3", evening:BASE+"08.mp3"}
+  afasy:  {name:"مشاري العفاسي", morning:F("03"), evening:F("04")},
+  abbad:  {name:"فارس عباد",     morning:F("05"), evening:F("06")},
+  jibril: {name:"محمد جبريل",    morning:F("07"), evening:F("08")}
 };
+let mirrorIdx = 0;
 
 // ---- Adhkar text (حصن المسلم) ; m = morning wording, e = evening wording ----
 const ADHKAR = [
@@ -175,7 +182,8 @@ function fmt(s){ if(!isFinite(s)) return "--:--"; s=Math.floor(s); return Math.f
 
 function setSource(keepPlaying){
   const wasPlaying = keepPlaying && !audio.paused;
-  audio.src = RECITERS[reciter][period];
+  mirrorIdx = 0;
+  audio.src = MIRRORS[mirrorIdx] + RECITERS[reciter][period];
   audio.playbackRate = speed;
   $("trackName").textContent = (period==="morning"?"أذكار الصباح":"أذكار المساء")+" — "+RECITERS[reciter].name;
   $("fill").style.width="0"; $("cur").textContent="0:00"; $("dur").textContent="--:--";
@@ -227,6 +235,16 @@ audio.addEventListener("loadedmetadata",()=>{ $("dur").textContent=fmt(audio.dur
 audio.addEventListener("timeupdate",()=>{
   $("cur").textContent=fmt(audio.currentTime);
   if(audio.duration) $("fill").style.width=(audio.currentTime/audio.duration*100)+"%";
+});
+audio.addEventListener("error",()=>{
+  if(mirrorIdx < MIRRORS.length-1){
+    mirrorIdx++;
+    audio.src = MIRRORS[mirrorIdx] + RECITERS[reciter][period];
+    audio.playbackRate = speed;
+    play();
+  } else {
+    $("status").textContent="تعذّر تحميل الصوت من كل الخوادم. جرّب قارئ ثاني أو حاول بعد شوي.";
+  }
 });
 audio.addEventListener("waiting",()=>{ $("status").textContent="جاري التحميل…"; });
 audio.addEventListener("playing",()=>{ $("status").textContent=""; });
